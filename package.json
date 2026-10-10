@@ -1,0 +1,69 @@
+{
+  "name": "@johnhenry/inspectable",
+  "version": "0.0.0",
+  "description": "Preview any JavaScript value -- functions, cycles, Maps, errors, proxies -- as a small structured-clone-safe tree, so a value living in a Worker or iframe can be shown elsewhere; plus a <value-inspector> element with lazy expansion.",
+  "type": "module",
+  "main": "src/index.mjs",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.mjs"
+    },
+    "./serialize": {
+      "types": "./src/index.d.ts",
+      "default": "./src/serialize.mjs"
+    },
+    "./element": {
+      "types": "./src/element.d.ts",
+      "default": "./src/element.mjs"
+    },
+    "./global": {
+      "types": "./src/global.d.ts",
+      "default": "./src/global.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "./src/global.mjs"
+  ],
+  "scripts": {
+    "test": "node --test test/ && npm run examples",
+    "examples": "for f in examples/[0-9]*.mjs; do node \"$f\" || exit 1; done",
+    "example:01": "node examples/01-a-value-stays-in-its-worker-while-its-preview-crosses.mjs",
+    "example:02": "node examples/02-hostile-values-cannot-break-a-preview.mjs",
+    "example:03": "node examples/03-arrays-of-records-become-tables.mjs"
+  },
+  "keywords": [
+    "inspector",
+    "inspect",
+    "preview",
+    "serialize",
+    "structured-clone",
+    "worker",
+    "repl",
+    "notebook",
+    "devtools",
+    "custom-element"
+  ],
+  "author": "John Henry",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnhenry/inspectable.git"
+  },
+  "homepage": "https://opensource.johnhenry.me/inspectable/",
+  "bugs": "https://github.com/johnhenry/inspectable/issues",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.14.6"
+  }
+}
