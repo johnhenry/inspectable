@@ -4,6 +4,8 @@
 [![CI](https://github.com/johnhenry/inspectable/actions/workflows/ci.yml/badge.svg)](https://github.com/johnhenry/inspectable/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/%40johnhenry%2Finspectable.svg)](LICENSE)
 
+Full documentation: [opensource.johnhenry.me/inspectable](https://opensource.johnhenry.me/inspectable/)
+
 Show a JavaScript value that lives somewhere else.
 
 A REPL, a notebook cell or an agent's tool result often produces a value inside a Web Worker, a sandboxed iframe or another process, and the page that wants to *show* it can't receive it: functions, class instances, cycles, proxies and DOM nodes don't survive `postMessage`. inspectable turns any value into a small preview tree that does survive it (structured-clone safe and JSON safe), keeps the value where it is, and lets the viewer fetch deeper levels lazily by handle. A `<value-inspector>` element renders the tree.
