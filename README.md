@@ -73,7 +73,7 @@ serialize({ a: [1, 2], f(x) {}, e: new TypeError("bad") }, { depth: 2 });
 // }
 ```
 
-Every node has `type` and `text`. Others appear when they apply: `value` (clone-safe primitives only; `NaN`, `-0` and `Infinity` are text-only because JSON can't hold them), `name`, `size`, `entries` (`{ key, value }`, where a `Map` key is itself a node), `more` (how many children or characters the limits cut), `handle` (fetch the children later), `source` (function source, error stack, element markup, all truncated) and `kind` for functions (`function`, `arrow`, `async`, `generator`, `class`).
+Every node has `type` and `text`. Others appear when they apply: `value` (clone-safe primitives only; `NaN`, `-0` and `Infinity` are text-only because JSON can't hold them), `name`, `size`, `entries` (`{ key, value }`, where a `Map` key is itself a node), `more` (how many children or characters the limits cut), `handle` (fetch the children later), `source` (function source, error stack, element markup, all truncated; a promise's state can't be read synchronously, so its preview has none: use `promiseState()`) and `kind` for functions (`function`, `arrow`, `async`, `generator`, `class`).
 
 Types: `undefined` `null` `boolean` `number` `bigint` `string` `symbol` `function` `array` `object` `map` `set` `date` `regexp` `error` `promise` `typedarray` `arraybuffer` `dataview` `url` `module` `weak` `element` `getter` `circular` `unreadable`.
 
@@ -100,7 +100,7 @@ Types: `undefined` `null` `boolean` `number` `bigint` `string` `symbol` `functio
 | | |
 | --- | --- |
 | `value` property | A preview node. Setting it re-renders. |
-| `expand` property | `async (handle) => ({ entries, more })`, called the first time a collapsed node with a `handle` is opened. |
+| `expand` property | `async (handle) => ({ entries, more })`, called the first time a collapsed node with a `handle` is opened. Without one, such a node says it can't be expanded here. |
 | `open` attribute | Expand the root. |
 | `raw-strings` attribute | Show a root string as plain, wrapped text instead of a quoted literal (good for text output). |
 | CSS | `--inspectable-font`, `--inspectable-text`, `--inspectable-string`, `--inspectable-number`, `--inspectable-keyword`, `--inspectable-key`, `--inspectable-function`, `--inspectable-error`, `--inspectable-muted`, `--inspectable-focus`. Defaults use `light-dark()`, so they follow the page's `color-scheme`. |

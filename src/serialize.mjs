@@ -23,7 +23,7 @@
  *   entries  [{ key, value }] children (key is a string, or a node for Map keys)
  *   more     how many children were cut off by maxEntries
  *   handle   pass to expand() to fetch children not included yet
- *   source   function source (truncated), message/stack for errors, state for promises
+ *   source   function source (truncated), message/stack for errors, element markup
  */
 
 const DEFAULTS = { depth: 1, maxEntries: 100, maxString: 2000, maxSource: 400 };
@@ -263,7 +263,8 @@ export function createInspector(defaults = {}) {
         text = `${name}: ${value.message}`;
         extra = { source: truncate(String(value.stack ?? ""), opts.maxSource * 4) };
       } else if (typeof Promise === "function" && value instanceof Promise) {
-        return { type: "promise", text: "Promise", name, source: "pending" };
+        // Its state can't be read synchronously; promiseState() can.
+        return { type: "promise", text: "Promise", name };
       } else if (value instanceof TYPED_ARRAY) {
         type = "typedarray";
         size = value.length;

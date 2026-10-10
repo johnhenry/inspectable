@@ -75,6 +75,7 @@ test("dates, regexps, urls, errors, buffers and typed arrays", () => {
 
 test("promises, weak collections and module-like values are previewed without walking them", () => {
   assert.equal(serialize(Promise.resolve(1)).type, "promise");
+  assert.equal(serialize(Promise.resolve(1)).source, undefined, "no made-up state: promiseState() reads it");
   assert.equal(serialize(new WeakMap()).type, "weak");
 });
 

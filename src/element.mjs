@@ -214,6 +214,7 @@ export class ValueInspector extends HTMLElementBase {
   }
   set expand(fn) {
     this.#expand = fn;
+    this.#render();
   }
 
   attributeChangedCallback() {
@@ -229,7 +230,9 @@ export class ValueInspector extends HTMLElementBase {
     }
     host.replaceChildren(
       renderPreview(this.#value, {
-        expand: (handle) => (this.#expand ? this.#expand(handle) : Promise.resolve(undefined)),
+        // No callback means nothing can be fetched: say so, rather than
+        // reporting every handle as expired.
+        expand: this.#expand ? (handle) => this.#expand(handle) : undefined,
         document: this.ownerDocument,
         open: this.hasAttribute("open"),
         rawStrings: this.hasAttribute("raw-strings"),

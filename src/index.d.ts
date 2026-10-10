@@ -20,7 +20,7 @@ export interface Preview {
   more?: number;
   /** Pass to `expand()` for children not included yet. */
   handle?: string;
-  /** Function source, error stack, element markup (truncated), or promise state. */
+  /** Function source, error stack or element markup (truncated). A promise's state isn't previewed: use promiseState(). */
   source?: string;
   /** For functions: "function" | "arrow" | "async" | "generator" | "class". */
   kind?: string;

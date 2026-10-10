@@ -114,3 +114,14 @@ test("defineValueInspector is idempotent and supports another tag", () => {
   assert.ok(Other);
   assert.notEqual(Other, a);
 });
+
+test("<value-inspector> without an expand callback says a handle can't be expanded here", async () => {
+  const el = document.createElement("value-inspector");
+  document.body.append(el);
+  el.value = { type: "object", text: "{…}", name: "Object", handle: "h:1" };
+  const details = el.shadowRoot.querySelector("details");
+  details.open = true;
+  details.dispatchEvent(new window.Event("toggle"));
+  await tick();
+  assert.match(el.shadowRoot.textContent, /not expandable here/);
+});
