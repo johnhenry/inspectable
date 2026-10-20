@@ -20,13 +20,30 @@
  *   value    the primitive itself when it is clone-safe (booleans, finite numbers, strings)
  *   name     constructor, class, function or error name
  *   size     length / size / byteLength
+ *   byteLength  for binary values (buffers, views, typed arrays): their size in bytes
+ *   bytes    for binary values: the first `maxBytes` bytes, as an array of 0-255
+ *   bytesMore   how many bytes `bytes` leaves out
  *   entries  [{ key, value }] children (key is a string, or a node for Map keys)
  *   more     how many children were cut off by maxEntries
  *   handle   pass to expand() to fetch children not included yet
  *   source   function source (truncated), message/stack for errors, element markup
  */
 
-const DEFAULTS = { depth: 1, maxEntries: 100, maxString: 2000, maxSource: 400 };
+const DEFAULTS = { depth: 1, maxEntries: 100, maxString: 2000, maxSource: 400, maxBytes: 256 };
+
+/** `{ byteLength, bytes, bytesMore }` for a binary value, `maxBytes` at most. */
+function binaryInfo(value, maxBytes) {
+  try {
+    const isBuffer = value instanceof ArrayBuffer || (typeof SharedArrayBuffer === "function" && value instanceof SharedArrayBuffer);
+    const byteLength = value.byteLength;
+    const count = Math.max(0, Math.min(byteLength, maxBytes));
+    if (!count) return { byteLength };
+    const view = isBuffer ? new Uint8Array(value, 0, count) : new Uint8Array(value.buffer, value.byteOffset, count);
+    return { byteLength, bytes: Array.from(view), ...(byteLength > count ? { bytesMore: byteLength - count } : {}) };
+  } catch {
+    return {}; // a detached buffer has nothing to read
+  }
+}
 
 const TYPED_ARRAY = Object.getPrototypeOf(Int8Array);
 
@@ -92,7 +109,7 @@ const isElementLike = (value) =>
 
 /**
  * Create an inspector with a handle registry for lazy expansion.
- * @param {{ depth?: number, maxEntries?: number, maxString?: number, maxSource?: number }} [defaults]
+ * @param {{ depth?: number, maxEntries?: number, maxString?: number, maxSource?: number, maxBytes?: number }} [defaults]
  */
 export function createInspector(defaults = {}) {
   const options = { ...DEFAULTS, ...defaults };
@@ -269,10 +286,11 @@ export function createInspector(defaults = {}) {
         type = "typedarray";
         size = value.length;
         text = `${name}(${size})`;
+        extra = binaryInfo(value, opts.maxBytes);
       } else if (value instanceof ArrayBuffer || (typeof SharedArrayBuffer === "function" && value instanceof SharedArrayBuffer)) {
-        return { type: "arraybuffer", text: `${name}(${value.byteLength})`, name, size: value.byteLength };
+        return { type: "arraybuffer", text: `${name}(${value.byteLength})`, name, size: value.byteLength, ...binaryInfo(value, opts.maxBytes) };
       } else if (value instanceof DataView) {
-        return { type: "dataview", text: `DataView(${value.byteLength})`, name, size: value.byteLength };
+        return { type: "dataview", text: `DataView(${value.byteLength})`, name, size: value.byteLength, ...binaryInfo(value, opts.maxBytes) };
       } else if (typeof URL === "function" && value instanceof URL) {
         return { type: "url", text: value.href, name };
       } else if (value instanceof WeakMap || value instanceof WeakSet || (typeof WeakRef === "function" && value instanceof WeakRef)) {
@@ -320,15 +338,15 @@ export function createInspector(defaults = {}) {
      * handles so `release(scope)` can drop them together (for example, one
      * scope per notebook cell, released when the cell reruns).
      */
-    serialize(value, { depth = options.depth, maxEntries = options.maxEntries, maxString = options.maxString, maxSource = options.maxSource, scope } = {}) {
-      return node(value, depth, [], { maxEntries, maxString, maxSource }, scope);
+    serialize(value, { depth = options.depth, maxEntries = options.maxEntries, maxString = options.maxString, maxSource = options.maxSource, maxBytes = options.maxBytes, scope } = {}) {
+      return node(value, depth, [], { maxEntries, maxString, maxSource, maxBytes }, scope);
     },
 
     /** One more level of children for a node's `handle`. Returns `undefined` for an unknown or released handle. */
-    expand(handle, { depth = 1, maxEntries = options.maxEntries, maxString = options.maxString, maxSource = options.maxSource } = {}) {
+    expand(handle, { depth = 1, maxEntries = options.maxEntries, maxString = options.maxString, maxSource = options.maxSource, maxBytes = options.maxBytes } = {}) {
       const entry = handles.get(handle);
       if (!entry) return undefined;
-      const opts = { maxEntries, maxString, maxSource };
+      const opts = { maxEntries, maxString, maxSource, maxBytes };
       const value = entry.value;
       if (typeof value === "function") {
         const { entries, more } = children(value, "object", depth - 1, [value], opts, entry.scope);

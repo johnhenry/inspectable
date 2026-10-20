@@ -125,3 +125,63 @@ test("<value-inspector> without an expand callback says a handle can't be expand
   await tick();
   assert.match(el.shadowRoot.textContent, /not expandable here/);
 });
+
+test("renderValue renders nested values in place of the default, and null falls back", () => {
+  const preview = serialize({ raw: new Uint8Array([1, 2, 255]).buffer, n: 7, list: [new Uint8Array([0, 16])] }, { depth: 3 });
+  const seen = [];
+  const node = mod.renderPreview(preview, {
+    document,
+    open: true,
+    renderValue(p, ctx) {
+      seen.push(p.type);
+      assert.equal(ctx.document, document);
+      if (!p.bytes) return null;
+      const pre = document.createElement("pre");
+      pre.className = "hex";
+      pre.textContent = mod.hexDump(p.bytes);
+      return pre;
+    },
+  });
+  const hex = [...node.querySelectorAll("pre.hex")].map((x) => x.textContent);
+  assert.equal(hex.length, 2);
+  assert.match(hex[0], /^00000000 {2}01 02 ff/);
+  assert.ok(seen.includes("number") && seen.includes("arraybuffer") && seen.includes("typedarray"));
+  // Keys stay, and the number kept its default rendering.
+  assert.deepEqual([...node.querySelectorAll(".key")].map((k) => k.textContent).slice(0, 2), ["raw", "n"]);
+  assert.ok(node.querySelector(".number"));
+  // An expandable value still expands (a typed array shows its entries).
+  assert.ok(node.querySelectorAll("details").length >= 2);
+});
+
+test("a hook that throws falls back to the default rendering", () => {
+  const node = mod.renderPreview(serialize(5), {
+    document,
+    renderValue() {
+      throw new Error("nope");
+    },
+  });
+  assert.equal(node.textContent, "5");
+});
+
+test("hexDump: offset, hex pairs and ASCII, 16 per line", () => {
+  const text = mod.hexDump(Array.from({ length: 20 }, (_, i) => 0x41 + i));
+  const lines = text.split("\n");
+  assert.equal(lines.length, 2);
+  assert.equal(lines[0], "00000000  41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50  |ABCDEFGHIJKLMNOP|");
+  assert.match(lines[1], /^00000010 {2}51 52 53 54 {38}\|QRST\|$/);
+  assert.equal(mod.hexDump([0, 10, 127]), "00000000  00 0a 7f" + " ".repeat(41) + "|...|");
+  assert.equal(mod.hexDump([]), "");
+});
+
+test("<value-inspector> takes a renderValue property and re-renders", () => {
+  mod.defineValueInspector();
+  const inspector = document.createElement("value-inspector");
+  document.body.append(inspector);
+  inspector.value = serialize({ raw: new Uint8Array([65]).buffer }, { depth: 2 });
+  inspector.setAttribute("open", "");
+  inspector.renderValue = (p) => (p.bytes ? Object.assign(document.createElement("code"), { textContent: "BYTES" + p.bytes.length }) : null);
+  assert.equal(inspector.renderValue.length, 1);
+  assert.match(inspector.shadowRoot.textContent, /BYTES1/);
+  inspector.renderValue = undefined;
+  assert.doesNotMatch(inspector.shadowRoot.textContent, /BYTES1/);
+});

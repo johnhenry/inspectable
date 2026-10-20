@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0 (2026-10-20)
+
+- **Binary values carry their bytes.** `arraybuffer`, `dataview` and `typedarray` previews gain `byteLength`, `bytes` (the first `maxBytes` bytes, default 256, each 0-255) and `bytesMore`; `maxBytes: 0` omits them. Clone-safe, so a hex view can be drawn on the other side of a Worker. Fixes #1.
+- **`renderValue(preview, { document })` hook** on `renderPreview()` and a `renderValue` property on `<value-inspector>`: called for every value, nested ones included; a returned node replaces that value's default rendering. A hook that throws or returns nothing falls back to the default. Fixes #1.
+- **`hexDump(bytes, { width, offset })`** formats bytes as offset, hex pairs and ASCII.
+
 ## 0.0.0 (2026-10-09)
 
 First release. A new package, never published under another name.

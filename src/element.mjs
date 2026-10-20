@@ -61,16 +61,49 @@ export const isExpandable = (preview) =>
   Boolean(preview && EXPANDABLE.has(preview.type) && (preview.entries?.length || preview.handle || preview.more || (preview.type === "function" && preview.source)));
 
 /**
+ * A classic hex dump of byte values (an array of 0-255, like a preview's
+ * `bytes`): offset, 16 hex pairs, and the printable ASCII, one line per 16.
+ * @param {ArrayLike<number>} bytes
+ * @param {{ width?: number, offset?: number }} [options] bytes per line (default 16); first line's offset (default 0)
+ */
+export function hexDump(bytes, { width = 16, offset = 0 } = {}) {
+  const lines = [];
+  for (let i = 0; i < bytes.length; i += width) {
+    const row = Array.from({ length: Math.min(width, bytes.length - i) }, (_, k) => bytes[i + k] & 255);
+    const hex = row.map((b) => b.toString(16).padStart(2, "0")).join(" ").padEnd(width * 3 - 1);
+    const ascii = row.map((b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : ".")).join("");
+    lines.push(`${(offset + i).toString(16).padStart(8, "0")}  ${hex}  |${ascii}|`);
+  }
+  return lines.join("\n");
+}
+
+/**
  * Build DOM for a preview node.
  * @param {object} preview a node from `serialize()` / `inspector.serialize()`
  * @param {{ expand?: (handle: string) => Promise<{ entries: any[], more?: number } | undefined>,
- *           document?: Document, open?: boolean, rawStrings?: boolean, label?: Node }} [options]
+ *           document?: Document, open?: boolean, rawStrings?: boolean, label?: Node,
+ *           renderValue?: (preview: object, context: { document: Document }) => Node | null | undefined }} [options]
+ *
+ * `renderValue` is called for every node, nested ones included (a buffer
+ * inside an object, a Map key), and may return a node to show in place of
+ * the default rendering of that value (its label and, for an expandable
+ * value, its children stay). Return `null`/`undefined` to keep the default.
+ * A hook that throws is ignored for that node. Build the node with
+ * `textContent`, never HTML.
  */
 export function renderPreview(preview, options = {}) {
   const doc = options.document ?? globalThis.document;
-  const { expand, open = false, rawStrings = false, label } = options;
+  const { expand, open = false, rawStrings = false, label, renderValue } = options;
 
   const valueSpan = (node) => {
+    if (renderValue) {
+      try {
+        const custom = renderValue(node, { document: doc });
+        if (custom) return custom;
+      } catch {
+        // fall through to the default rendering
+      }
+    }
     const span = el(doc, "span", node.type, node.text);
     if (node.type === "function" && node.source) span.title = node.source;
     if (node.type === "element" && node.source) span.title = node.source;
@@ -109,9 +142,9 @@ export function renderPreview(preview, options = {}) {
       const keyLabel = doc.createDocumentFragment();
       if (typeof entry.key === "string") keyLabel.append(el(doc, "span", "key", entry.key), el(doc, "span", "sep", ": "));
       else {
-        keyLabel.append(renderPreview(entry.key, { expand, document: doc }), el(doc, "span", "sep", " => "));
+        keyLabel.append(renderPreview(entry.key, { expand, document: doc, renderValue }), el(doc, "span", "sep", " => "));
       }
-      li.append(renderPreview(entry.value, { expand, document: doc, label: keyLabel }));
+      li.append(renderPreview(entry.value, { expand, document: doc, label: keyLabel, renderValue }));
       list.append(li);
     }
     if (more) list.append(el(doc, "li", "more", `… ${more} more`));
@@ -180,7 +213,9 @@ const HTMLElementBase = globalThis.HTMLElement ?? class {};
 /**
  * `<value-inspector>`: shows one preview.
  *
- * Properties: `value` (a preview node), `expand` (async handle => children).
+ * Properties: `value` (a preview node), `expand` (async handle => children),
+ * `renderValue` (a hook returning a node to render a value with, see
+ * `renderPreview`).
  * Attributes: `open` (expand the root), `raw-strings` (show a root string as
  * plain text, not a quoted literal).
  */
@@ -191,6 +226,7 @@ export class ValueInspector extends HTMLElementBase {
 
   #value = undefined;
   #expand = undefined;
+  #renderValue = undefined;
   #root;
 
   constructor() {
@@ -217,6 +253,14 @@ export class ValueInspector extends HTMLElementBase {
     this.#render();
   }
 
+  get renderValue() {
+    return this.#renderValue;
+  }
+  set renderValue(fn) {
+    this.#renderValue = fn;
+    this.#render();
+  }
+
   attributeChangedCallback() {
     this.#render();
   }
@@ -236,6 +280,7 @@ export class ValueInspector extends HTMLElementBase {
         document: this.ownerDocument,
         open: this.hasAttribute("open"),
         rawStrings: this.hasAttribute("raw-strings"),
+        renderValue: this.#renderValue,
       }),
     );
   }

@@ -22,6 +22,12 @@ export interface Preview {
   handle?: string;
   /** Function source, error stack or element markup (truncated). A promise's state isn't previewed: use promiseState(). */
   source?: string;
+  /** Binary values (buffers, views, typed arrays): size in bytes. */
+  byteLength?: number;
+  /** Binary values: the first `maxBytes` bytes, each 0-255. */
+  bytes?: number[];
+  /** Binary values: how many bytes `bytes` leaves out. */
+  bytesMore?: number;
   /** For functions: "function" | "arrow" | "async" | "generator" | "class". */
   kind?: string;
 }
@@ -35,6 +41,8 @@ export interface SerializeOptions {
   maxString?: number;
   /** Characters of function source. Default 400. */
   maxSource?: number;
+  /** Bytes of a binary value to include in `bytes`. Default 256; 0 omits them. */
+  maxBytes?: number;
   /** Prefix for handles, so `release(scope)` drops them together. */
   scope?: string;
 }

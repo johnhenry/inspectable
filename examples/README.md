@@ -7,6 +7,7 @@ Runnable, self-verifying examples. Each one asserts the behavior it demonstrates
 | [`01-a-value-stays-in-its-worker-while-its-preview-crosses.mjs`](./01-a-value-stays-in-its-worker-while-its-preview-crosses.mjs) | A value holding a function and a cycle stays in a real worker thread; only its structured-clone preview crosses, and a deeper level is fetched later by `handle` through `expand()`. |
 | [`02-hostile-values-cannot-break-a-preview.mjs`](./02-hostile-values-cannot-break-a-preview.mjs) | `serialize()` never invokes getters, reports a revoked Proxy as `unreadable`, cuts cycles, caps a 100,000-item array at `maxEntries` with a `more` count, and always returns JSON-safe output. |
 | [`03-arrays-of-records-become-tables.mjs`](./03-arrays-of-records-become-tables.mjs) | `toTable()` unions record keys into columns, fills gaps with `null`, and returns `undefined` for values that aren't table-shaped. |
+| [`04-binary-values-carry-bytes-for-a-hex-view.mjs`](./04-binary-values-carry-bytes-for-a-hex-view.mjs) | A buffer nested in an object carries its first bytes (`bytes`, `byteLength`, `bytesMore`) across as clone-safe data, bounded by `maxBytes`, and `hexDump()` formats them. |
 
 ## Running
 

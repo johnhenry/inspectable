@@ -75,7 +75,7 @@ serialize({ a: [1, 2], f(x) {}, e: new TypeError("bad") }, { depth: 2 });
 // }
 ```
 
-Every node has `type` and `text`. Others appear when they apply: `value` (clone-safe primitives only; `NaN`, `-0` and `Infinity` are text-only because JSON can't hold them), `name`, `size`, `entries` (`{ key, value }`, where a `Map` key is itself a node), `more` (how many children or characters the limits cut), `handle` (fetch the children later), `source` (function source, error stack, element markup, all truncated; a promise's state can't be read synchronously, so its preview has none: use `promiseState()`) and `kind` for functions (`function`, `arrow`, `async`, `generator`, `class`).
+Every node has `type` and `text`. Others appear when they apply: `value` (clone-safe primitives only; `NaN`, `-0` and `Infinity` are text-only because JSON can't hold them), `name`, `size`, `entries` (`{ key, value }`, where a `Map` key is itself a node), `more` (how many children or characters the limits cut), `handle` (fetch the children later), `source` (function source, error stack, element markup, all truncated; a promise's state can't be read synchronously, so its preview has none: use `promiseState()`) `kind` for functions (`function`, `arrow`, `async`, `generator`, `class`), and, for binary values (`arraybuffer`, `dataview`, `typedarray`), `byteLength`, `bytes` (the first `maxBytes` bytes, each 0-255) and `bytesMore` (how many it left out), so a host can draw a hex view.
 
 Types: `undefined` `null` `boolean` `number` `bigint` `string` `symbol` `function` `array` `object` `map` `set` `date` `regexp` `error` `promise` `typedarray` `arraybuffer` `dataview` `url` `module` `weak` `element` `getter` `circular` `unreadable`.
 
@@ -85,8 +85,8 @@ Types: `undefined` `null` `boolean` `number` `bigint` `string` `symbol` `functio
 
 | Export | Does |
 | --- | --- |
-| `createInspector({ depth = 1, maxEntries = 100, maxString = 2000, maxSource = 400 })` | An inspector with a handle registry. |
-| `inspector.serialize(value, { depth, maxEntries, maxString, maxSource, scope })` | Preview with `depth` levels inline; deeper expandable values get a `handle` prefixed by `scope`. |
+| `createInspector({ depth = 1, maxEntries = 100, maxString = 2000, maxSource = 400, maxBytes = 256 })` | An inspector with a handle registry. |
+| `inspector.serialize(value, { depth, maxEntries, maxString, maxSource, maxBytes, scope })` | Preview with `depth` levels inline; deeper expandable values get a `handle` prefixed by `scope`. |
 | `inspector.expand(handle, options)` | `{ entries, more }` one level down, or `undefined` once released. |
 | `inspector.release(scope?)` | Drop every handle (or one scope's) so the values can be garbage collected. `inspector.size` counts live handles. |
 | `serialize(value, options)` | Stateless preview; no handles in the output. |
@@ -95,7 +95,7 @@ Types: `undefined` `null` `boolean` `number` `bigint` `string` `symbol` `functio
 
 `@johnhenry/inspectable/serialize` is the same serializer as a single file with no imports, for shipping into a Worker or sandbox as source text (for example `sandbox.defineModule("inspectable", source)` in [andbox](https://github.com/johnhenry/andbox), or `?raw` in a bundler).
 
-`@johnhenry/inspectable/element` (DOM): `renderPreview(preview, { expand, document, open, rawStrings, label })`, `renderTable(table, { document, caption })`, `isExpandable(preview)`, `ValueInspector` and `defineValueInspector(tag = "value-inspector")`. `@johnhenry/inspectable/global` registers the element.
+`@johnhenry/inspectable/element` (DOM): `renderPreview(preview, { expand, document, open, rawStrings, label, renderValue })`, `hexDump(bytes, { width = 16, offset = 0 })`, `renderTable(table, { document, caption })`, `isExpandable(preview)`, `ValueInspector` and `defineValueInspector(tag = "value-inspector")`. `@johnhenry/inspectable/global` registers the element.
 
 ## `<value-inspector>`
 
@@ -103,6 +103,7 @@ Types: `undefined` `null` `boolean` `number` `bigint` `string` `symbol` `functio
 | --- | --- |
 | `value` property | A preview node. Setting it re-renders. |
 | `expand` property | `async (handle) => ({ entries, more })`, called the first time a collapsed node with a `handle` is opened. Without one, such a node says it can't be expanded here. |
+| `renderValue` property | A hook, `(preview, { document }) => Node \| null`, called for every value, nested ones included. A returned node is shown in place of that value's default rendering (its key and, if expandable, its children stay); `null`/`undefined` keeps the default. Build the node with `textContent`, never HTML. For example, `(p) => p.bytes ? hexPre(p.bytes) : null` draws every nested buffer or typed array as a hex view. |
 | `open` attribute | Expand the root. |
 | `raw-strings` attribute | Show a root string as plain, wrapped text instead of a quoted literal (good for text output). |
 | CSS | `--inspectable-font`, `--inspectable-text`, `--inspectable-string`, `--inspectable-number`, `--inspectable-keyword`, `--inspectable-key`, `--inspectable-function`, `--inspectable-error`, `--inspectable-muted`, `--inspectable-focus`. Defaults use `light-dark()`, so they follow the page's `color-scheme`. |

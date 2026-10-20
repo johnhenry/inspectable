@@ -186,3 +186,38 @@ test("promiseState reports fulfilled, rejected and pending", async () => {
   assert.equal(rejected.state, "rejected");
   assert.deepEqual(await promiseState(new Promise(() => {})), { state: "pending" });
 });
+
+test("binary values carry a bounded `bytes` array, their byteLength, and a `bytesMore` count", () => {
+  const buffer = new Uint8Array([1, 2, 255, 0]).buffer;
+  const p = serialize(buffer);
+  assert.equal(p.type, "arraybuffer");
+  assert.equal(p.byteLength, 4);
+  assert.deepEqual(p.bytes, [1, 2, 255, 0]);
+  assert.equal(p.bytesMore, undefined);
+  const view = serialize(new Uint16Array([0x0102, 0x0304]));
+  assert.equal(view.size, 2);
+  assert.equal(view.byteLength, 4);
+  assert.deepEqual(view.bytes, [...new Uint8Array(new Uint16Array([0x0102, 0x0304]).buffer)]);
+  // A view onto part of a buffer shows only its own bytes.
+  const sub = serialize(new Uint8Array(new Uint8Array([9, 8, 7, 6, 5]).buffer, 1, 3));
+  assert.deepEqual(sub.bytes, [8, 7, 6]);
+  const data = serialize(new DataView(new Uint8Array([4, 5, 6]).buffer, 1));
+  assert.deepEqual(data.bytes, [5, 6]);
+  const big = serialize(new Uint8Array(1000), { maxBytes: 16 });
+  assert.equal(big.bytes.length, 16);
+  assert.equal(big.bytesMore, 984);
+  assert.equal(serialize(new Uint8Array(10), { maxBytes: 0 }).bytes, undefined);
+  assert.equal(serialize(new ArrayBuffer(0)).bytes, undefined);
+  cloneable(big);
+  cloneable(p);
+});
+
+test("nested binary values carry bytes too, and expand() honors maxBytes", () => {
+  const inspector = createInspector({ maxBytes: 2 });
+  const p = inspector.serialize({ a: { raw: new Uint8Array([1, 2, 3]).buffer } }, { depth: 3 });
+  assert.deepEqual(p.entries[0].value.entries[0].value.bytes, [1, 2]);
+  assert.equal(p.entries[0].value.entries[0].value.bytesMore, 1);
+  const q = inspector.serialize({ raw: new Uint8Array([1, 2, 3]).buffer }, { depth: 0 });
+  const next = inspector.expand(q.handle, { maxBytes: 3 });
+  assert.deepEqual(next.entries[0].value.bytes, [1, 2, 3]);
+});
